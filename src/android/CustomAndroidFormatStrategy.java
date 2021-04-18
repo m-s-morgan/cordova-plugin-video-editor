@@ -1,3 +1,7 @@
+/**
+ * Adding code to make outwidth and outheight multiple of 2
+ */
+
 package org.apache.cordova.videoeditor;
 
 import android.media.MediaCodecInfo;
@@ -73,6 +77,14 @@ public class CustomAndroidFormatStrategy implements MediaFormatStrategy {
         } else {
             outWidth = inWidth;
             outHeight = inHeight;
+        }
+
+        if (outWidth % 2 != 0) {
+            outWidth = Double.valueOf(Math.ceil(outWidth / 2)).intValue() * 2;
+        }
+
+        if (outHeight % 2 != 0) {
+            outHeight = Double.valueOf(Math.ceil(outHeight / 2)).intValue() * 2;
         }
 
         MediaFormat format = MediaFormat.createVideoFormat("video/avc", outWidth, outHeight);

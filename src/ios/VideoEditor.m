@@ -1,3 +1,7 @@
+/**
+ * Add check for width and height divisibility by 2
+**/
+
 //
 //  VideoEditor.m
 //
@@ -133,6 +137,14 @@
         newHeight = (width && height) ? height : videoHeight;
     }
 
+    if (newWidth % 2 != 0) {
+        newWidth = ceil(newWidth / 2) * 2;
+    }
+
+    if (newHeight % 2 != 0) {
+        newHeight = ceil(newHeight / 2) * 2;
+    }
+
     NSLog(@"input videoWidth: %f", videoWidth);
     NSLog(@"input videoHeight: %f", videoHeight);
     NSLog(@"output newWidth: %d", newWidth);
@@ -171,12 +183,52 @@
      }
      */
 
+
     //  Set up a semaphore for the completion handler and progress timer
     dispatch_semaphore_t sessionWaitSemaphore = dispatch_semaphore_create(0);
 
     void (^completionHandler)(void) = ^(void)
     {
-        dispatch_semaphore_signal(sessionWaitSemaphore);
+        @try {
+            dispatch_semaphore_signal(sessionWaitSemaphore);
+        } @catch (NSException *e) {
+            @try {
+                // this is kinda odd but must be done
+                if ([encoder status] == AVAssetExportSessionStatusCompleted) {
+                    NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
+                    // AVAssetExportSessionStatusCompleted will not always mean progress is 100 so hard code it below
+                    double progress = 100.00;
+                    [dictionary setValue: [NSNumber numberWithDouble: progress] forKey: @"progress"];
+
+                    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: dictionary];
+
+                    [result setKeepCallbackAsBool:YES];
+                    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                }
+
+                if (encoder.status == AVAssetExportSessionStatusCompleted)
+                {
+                    NSLog(@"Video export succeeded");
+                    if (saveToPhotoAlbum) {
+                        UISaveVideoAtPathToSavedPhotosAlbum(outputPath, self, nil, nil);
+                    }
+                    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:outputPath] callbackId:command.callbackId];
+                }
+                else if (encoder.status == AVAssetExportSessionStatusCancelled)
+                {
+                    NSLog(@"Video export cancelled");
+                    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Video export cancelled"] callbackId:command.callbackId];
+                }
+                else
+                {
+                    NSString *error = [NSString stringWithFormat:@"Video export failed with error: %@ (%ld)", encoder.error.localizedDescription, (long)encoder.error.code];
+                    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error] callbackId:command.callbackId];
+                }
+            } @catch (NSException *e) {
+                NSString *error = [NSString stringWithFormat:@"Video export failed"];
+                [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error] callbackId:command.callbackId];
+            }
+        }
     };
 
     // do it
@@ -185,49 +237,58 @@
         [encoder exportAsynchronouslyWithCompletionHandler:completionHandler];
 
         do {
-            dispatch_time_t dispatchTime = DISPATCH_TIME_FOREVER;  // if we dont want progress, we will wait until it finishes.
-            dispatchTime = getDispatchTimeFromSeconds((float)1.0);
-            double progress = [encoder progress] * 100;
+            @try {
+                dispatch_time_t dispatchTime = DISPATCH_TIME_FOREVER;  // if we dont want progress, we will wait until it finishes.
+                dispatchTime = getDispatchTimeFromSeconds((float)1.0);
+                double progress = [encoder progress] * 100;
 
-            NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
-            [dictionary setValue: [NSNumber numberWithDouble: progress] forKey: @"progress"];
+                NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
+                [dictionary setValue: [NSNumber numberWithDouble: progress] forKey: @"progress"];
 
-            CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: dictionary];
+                CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: dictionary];
 
-            [result setKeepCallbackAsBool:YES];
-            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
-            dispatch_semaphore_wait(sessionWaitSemaphore, dispatchTime);
+                [result setKeepCallbackAsBool:YES];
+                [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                dispatch_semaphore_wait(sessionWaitSemaphore, dispatchTime);
+            } @catch (NSException *e) {
+                break;
+            }
         } while( [encoder status] < AVAssetExportSessionStatusCompleted );
 
-        // this is kinda odd but must be done
-        if ([encoder status] == AVAssetExportSessionStatusCompleted) {
-            NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
-            // AVAssetExportSessionStatusCompleted will not always mean progress is 100 so hard code it below
-            double progress = 100.00;
-            [dictionary setValue: [NSNumber numberWithDouble: progress] forKey: @"progress"];
+        @try {
+            // this is kinda odd but must be done
+            if ([encoder status] == AVAssetExportSessionStatusCompleted) {
+                NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
+                // AVAssetExportSessionStatusCompleted will not always mean progress is 100 so hard code it below
+                double progress = 100.00;
+                [dictionary setValue: [NSNumber numberWithDouble: progress] forKey: @"progress"];
 
-            CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: dictionary];
+                CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary: dictionary];
 
-            [result setKeepCallbackAsBool:YES];
-            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
-        }
-
-        if (encoder.status == AVAssetExportSessionStatusCompleted)
-        {
-            NSLog(@"Video export succeeded");
-            if (saveToPhotoAlbum) {
-                UISaveVideoAtPathToSavedPhotosAlbum(outputPath, self, nil, nil);
+                [result setKeepCallbackAsBool:YES];
+                [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
             }
-            [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:outputPath] callbackId:command.callbackId];
-        }
-        else if (encoder.status == AVAssetExportSessionStatusCancelled)
-        {
-            NSLog(@"Video export cancelled");
-            [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Video export cancelled"] callbackId:command.callbackId];
-        }
-        else
-        {
-            NSString *error = [NSString stringWithFormat:@"Video export failed with error: %@ (%ld)", encoder.error.localizedDescription, (long)encoder.error.code];
+
+            if (encoder.status == AVAssetExportSessionStatusCompleted)
+            {
+                NSLog(@"Video export succeeded");
+                if (saveToPhotoAlbum) {
+                    UISaveVideoAtPathToSavedPhotosAlbum(outputPath, self, nil, nil);
+                }
+                [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:outputPath] callbackId:command.callbackId];
+            }
+            else if (encoder.status == AVAssetExportSessionStatusCancelled)
+            {
+                NSLog(@"Video export cancelled");
+                [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Video export cancelled"] callbackId:command.callbackId];
+            }
+            else
+            {
+                NSString *error = [NSString stringWithFormat:@"Video export failed with error: %@ (%ld)", encoder.error.localizedDescription, (long)encoder.error.code];
+                [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error] callbackId:command.callbackId];
+            }
+        } @catch (NSException *e) {
+            NSString *error = [NSString stringWithFormat:@"Video export failed"];
             [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error] callbackId:command.callbackId];
         }
     }];
