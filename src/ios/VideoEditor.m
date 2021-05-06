@@ -156,7 +156,7 @@
     encoder.shouldOptimizeForNetworkUse = optimizeForNetworkUse;
     encoder.videoSettings = @
     {
-        AVVideoCodecKey: AVVideoCodecH264,
+        AVVideoCodecKey: AVVideoCodecTypeH264,
         AVVideoWidthKey: [NSNumber numberWithInt: newWidth],
         AVVideoHeightKey: [NSNumber numberWithInt: newHeight],
         AVVideoCompressionPropertiesKey: @
