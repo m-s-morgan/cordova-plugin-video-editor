@@ -131,10 +131,10 @@
                 videoHeight = mediaSize.width;
                 aspectRatio = videoWidth / videoHeight;
             }
-        } else if (videoWidth < videoHeight || videoAngleInDegree == 90 || videoAngleInDegree == -90) {
-                videoWidth = mediaSize.height;
-                videoHeight = mediaSize.width;
-                aspectRatio = videoWidth / videoHeight;
+        } else if (videoAngleInDegree == 90 || videoAngleInDegree == -90) {
+            videoWidth = mediaSize.height;
+            videoHeight = mediaSize.width;
+            aspectRatio = videoWidth / videoHeight;
         }
 
         newWidth = (width && height) ? height * aspectRatio : videoWidth;
