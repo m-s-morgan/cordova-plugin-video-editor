@@ -120,14 +120,21 @@
     if (maintainAspectRatio) {
         float aspectRatio = videoWidth / videoHeight;
 
+        CGAffineTransform transform = track.preferredTransform;
+        CGFloat videoAngleInDegree  = atan2(transform.b, transform.a) * 180 / M_PI;
+
         // for some portrait videos ios gives the wrong width and height, this fixes that
         NSString *videoOrientation = [self getOrientationForTrack:avAsset];
         if ([videoOrientation isEqual: @"portrait"]) {
-            if (videoWidth > videoHeight) {
+            if (videoWidth > videoHeight || videoAngleInDegree == 0) {
                 videoWidth = mediaSize.height;
                 videoHeight = mediaSize.width;
                 aspectRatio = videoWidth / videoHeight;
             }
+        } else if (videoWidth < videoHeight || videoAngleInDegree == 90 || videoAngleInDegree == -90) {
+                videoWidth = mediaSize.height;
+                videoHeight = mediaSize.width;
+                aspectRatio = videoWidth / videoHeight;
         }
 
         newWidth = (width && height) ? height * aspectRatio : videoWidth;
