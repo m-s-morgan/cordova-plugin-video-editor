@@ -1,5 +1,5 @@
 /**
- * Add check for width and height divisibility by 2
+ * Add check for width and height divisibility by 2 and add rotation check
 **/
 
 //
