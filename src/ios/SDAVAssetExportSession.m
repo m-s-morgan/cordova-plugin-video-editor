@@ -149,12 +149,19 @@
     //
     NSArray *audioTracks = [self.asset tracksWithMediaType:AVMediaTypeAudio];
     if (audioTracks.count > 0) {
-        self.audioOutput = [AVAssetReaderAudioMixOutput assetReaderAudioMixOutputWithAudioTracks:audioTracks audioSettings:nil];
-        self.audioOutput.alwaysCopiesSampleData = NO;
-        self.audioOutput.audioMix = self.audioMix;
-        if ([self.reader canAddOutput:self.audioOutput])
+        NSArray *filteredAudioTracks = [audioTracks filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id object, NSDictionary *bindings) {
+            return [object isEnabled];
+        }]];
+        
+        if (filteredAudioTracks.count > 0)
         {
-            [self.reader addOutput:self.audioOutput];
+            self.audioOutput = [AVAssetReaderAudioMixOutput assetReaderAudioMixOutputWithAudioTracks:filteredAudioTracks audioSettings:nil];
+            self.audioOutput.alwaysCopiesSampleData = NO;
+            self.audioOutput.audioMix = self.audioMix;
+            if ([self.reader canAddOutput:self.audioOutput])
+            {
+                [self.reader addOutput:self.audioOutput];
+            }
         }
     } else {
         // Just in case this gets reused
