@@ -198,7 +198,7 @@ public class VideoEditor extends CordovaPlugin {
                     // FileInputStream fin = new FileInputStream(inFile);
                     // InputStream fin = cordova.getActivity().getContentResolver().openInputStream(uri);
 
-                    OutputStream outStream = new FileOutputStream(outputFile);
+                    // OutputStream outStream = new FileOutputStream(outputFile);
 
                     MediaTranscoder.Listener listener = new MediaTranscoder.Listener() {
                         @Override
