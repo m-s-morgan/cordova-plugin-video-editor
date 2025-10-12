@@ -7,6 +7,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import android.content.res.AssetFileDescriptor;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
@@ -28,6 +30,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.util.Log;
 
 import net.ypresto.androidtranscoder.MediaTranscoder;
@@ -37,6 +40,10 @@ import net.ypresto.androidtranscoder.MediaTranscoder;
  * Created by Ross Martin 2-2-15
  */
 public class VideoEditor extends CordovaPlugin {
+
+    public static final String SCHEME_CONTENT = "content";
+    public static final String SCHEME_ANDROID_RESOURCE = "android.resource";
+    public static final String SCHEME_FILE = "file";
 
     private static final String TAG = "VideoEditor";
 
@@ -106,20 +113,21 @@ public class VideoEditor extends CordovaPlugin {
         JSONObject options = args.optJSONObject(0);
         Log.d(TAG, "options: " + options.toString());
 
-        final File inFile = this.resolveLocalFileSystemURI(options.getString("fileUri"));
+        /*final File inFile = this.resolveLocalFileSystemURI(options.getString("fileUri"));
         if (!inFile.exists()) {
             Log.d(TAG, "input file does not exist");
             callback.error("input video does not exist.");
             return;
         }
 
-        final String videoSrcPath = inFile.getAbsolutePath();
+        final String videoSrcPath = inFile.getAbsolutePath();*/
+        final String videoSrcPath = options.getString("fileUri");
         final String outputFileName = options.optString(
                 "outputFileName",
                 new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date())
         );
 
-        final boolean deleteInputFile = options.optBoolean("deleteInputFile", false);
+        // final boolean deleteInputFile = options.optBoolean("deleteInputFile", false);
         final int width = options.optInt("width", 0);
         final int height = options.optInt("height", 0);
         final int fps = options.optInt("fps", 24);
@@ -130,7 +138,7 @@ public class VideoEditor extends CordovaPlugin {
 
         final String outputExtension = ".mp4";
 
-        final Context appContext = cordova.getActivity().getApplicationContext();
+        /*final Context appContext = cordova.getActivity().getApplicationContext();
         final PackageManager pm = appContext.getPackageManager();
 
         ApplicationInfo ai;
@@ -158,12 +166,27 @@ public class VideoEditor extends CordovaPlugin {
                 callback.error("Can't access or make Movies directory");
                 return;
             }
+        }*/
+
+        /*File mediaStorageDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/Android/data/" + cordova.getActivity().getPackageName() + "/files/files/videos");
+
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                callback.error("Can't access or make Movies directory");
+                return;
+            }
         }
 
         final String outputFilePath = new File(
                 mediaStorageDir.getPath(),
                 outputFileName + outputExtension
-        ).getAbsolutePath();
+        ).getAbsolutePath();*/
+
+        final File outputFile = new File(
+                getExternalDirPath(Environment.DIRECTORY_MOVIES),
+                outputFileName + outputExtension
+        );
+        final String outputFilePath = outputFile.getAbsolutePath();
 
         Log.d(TAG, "outputFilePath: " + outputFilePath);
 
@@ -171,8 +194,11 @@ public class VideoEditor extends CordovaPlugin {
             public void run() {
 
                 try {
+                    // FileInputStream fin = new FileInputStream(videoSrcPath);
+                    // FileInputStream fin = new FileInputStream(inFile);
+                    // InputStream fin = cordova.getActivity().getContentResolver().openInputStream(uri);
 
-                    FileInputStream fin = new FileInputStream(inFile);
+                    OutputStream outStream = new FileOutputStream(outputFile);
 
                     MediaTranscoder.Listener listener = new MediaTranscoder.Listener() {
                         @Override
@@ -193,16 +219,15 @@ public class VideoEditor extends CordovaPlugin {
 
                         @Override
                         public void onTranscodeCompleted() {
-
-                            File outFile = new File(outputFilePath);
+                            /*File outFile = new File(outputFilePath);
                             if (!outFile.exists()) {
                                 Log.d(TAG, "outputFile doesn't exist!");
-                                callback.error("an error ocurred during transcoding");
+                                callback.error("an error occurred during transcoding");
                                 return;
-                            }
+                            }*/
 
                             // make the gallery display the new file if saving to library
-                            if (saveToLibrary) {
+                            /*if (saveToLibrary) {
                                 Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
                                 scanIntent.setData(Uri.fromFile(inFile));
                                 scanIntent.setData(Uri.fromFile(outFile));
@@ -211,7 +236,7 @@ public class VideoEditor extends CordovaPlugin {
 
                             if (deleteInputFile) {
                                 inFile.delete();
-                            }
+                            }*/
 
                             callback.success(outputFilePath);
                         }
@@ -229,19 +254,19 @@ public class VideoEditor extends CordovaPlugin {
                         }
                     };
 
-                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    mmr.setDataSource(videoSrcPath);
+                    /*MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    mmr.setDataSource(appContext, Uri.parse(videoSrcPath));
 
                     String orientation;
                     String mmrOrientation = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
                     Log.d(TAG, "mmrOrientation: " + mmrOrientation); // 0, 90, 180, or 270
 
                     float videoWidth = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-                    float videoHeight = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+                    float videoHeight = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));*/
 
                     // MediaTranscoder.getInstance().transcodeVideo(fin.getFD(), outputFilePath,
                     //        new CustomAndroidFormatStrategy(videoBitrate, fps, width, height), listener, videoDuration);
-                    MediaTranscoder.getInstance().transcodeVideo(fin.getFD(), outputFilePath,
+                    MediaTranscoder.getInstance().transcodeVideo(GetFileDescriptor(Uri.parse(videoSrcPath)), outputFilePath,
                             new CustomAndroidFormatStrategy(videoBitrate, fps, width, height), listener);
 
                 } catch (Throwable e) {
@@ -251,6 +276,31 @@ public class VideoEditor extends CordovaPlugin {
 
             }
         });
+    }
+
+    private FileDescriptor GetFileDescriptor(Uri uri) throws FileNotFoundException, IOException {
+        String scheme = uri.getScheme();
+
+        if (SCHEME_FILE.equals(scheme)) {
+            // Note: left here to avoid breaking compatibility.  May be removed
+            // with sufficient testing.
+            return new FileInputStream(uri.getPath()).getFD();
+        } else {
+            try {
+                AssetFileDescriptor afd = this.cordova.getActivity().getContentResolver().openAssetFileDescriptor(uri, "r", null);
+                FileDescriptor fd = afd.getFileDescriptor();
+                // afd.close();
+
+                if (fd != null)
+                {
+                    return fd;
+                }
+
+                throw new FileNotFoundException("Unable to create stream");
+            } catch (IOException e) {
+                throw new FileNotFoundException("Unable to create stream");
+            }
+        }
     }
 
     /**
@@ -282,7 +332,7 @@ public class VideoEditor extends CordovaPlugin {
         JSONObject options = args.optJSONObject(0);
         Log.d(TAG, "options: " + options.toString());
 
-        String fileUri = options.getString("fileUri");
+        /*String fileUri = options.getString("fileUri");
         if (!fileUri.startsWith("file:/")) {
             fileUri = "file:/" + fileUri;
         }
@@ -293,7 +343,9 @@ public class VideoEditor extends CordovaPlugin {
             callback.error("input video does not exist.");
             return;
         }
-        final String srcVideoPath = inFile.getAbsolutePath();
+        final String srcVideoPath = inFile.getAbsolutePath();*/
+        final String srcVideoPath = options.getString("fileUri");
+        Log.d(TAG, "srcVideoPath = " + srcVideoPath);
         String outputFileName = options.optString(
                 "outputFileName",
                 new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date())
@@ -306,7 +358,7 @@ public class VideoEditor extends CordovaPlugin {
         final long atTime = (atTimeOpt == 0) ? 0 : atTimeOpt * 1000000;
 
         final Context appContext = cordova.getActivity().getApplicationContext();
-        PackageManager pm = appContext.getPackageManager();
+        /*PackageManager pm = appContext.getPackageManager();
 
         ApplicationInfo ai;
         try {
@@ -323,10 +375,10 @@ public class VideoEditor extends CordovaPlugin {
                 callback.error("Can't access or make Movies directory");
                 return;
             }
-        }
+        }*/
 
         final File outputFile =  new File(
-                externalFilesDir.getPath(),
+                getExternalDirPath(Environment.DIRECTORY_PICTURES),
                 outputFileName + ".jpg"
         );
         final String outputFilePath = outputFile.getAbsolutePath();
@@ -338,8 +390,9 @@ public class VideoEditor extends CordovaPlugin {
                 OutputStream outStream = null;
 
                 try {
+                    Uri uri = Uri.parse(srcVideoPath);
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-                    mmr.setDataSource(srcVideoPath);
+                    mmr.setDataSource(appContext, uri);
 
                     Bitmap bitmap = mmr.getFrameAtTime(atTime);
 
@@ -378,11 +431,24 @@ public class VideoEditor extends CordovaPlugin {
 
                     Log.d(TAG, "exception on thumbnail creation", e);
                     callback.error(e.toString());
-
                 }
 
             }
         });
+    }
+
+    /*private String getTempDirectoryPath() {
+        File cache = cordova.getActivity().getCacheDir();
+        // Create the cache directory if it doesn't exist
+        cache.mkdirs();
+        return cache.getAbsolutePath();
+    }*/
+
+    private String getExternalDirPath(String location) {
+        File dir = this.cordova.getContext().getExternalFilesDir(location);
+        // Create the cache directory if it doesn't exist
+        dir.mkdirs();
+        return dir.getAbsolutePath();
     }
 
     /**
@@ -414,60 +480,87 @@ public class VideoEditor extends CordovaPlugin {
         JSONObject options = args.optJSONObject(0);
         Log.d(TAG, "options: " + options.toString());
 
-        File inFile = this.resolveLocalFileSystemURI(options.getString("fileUri"));
+        /*File inFile = this.resolveLocalFileSystemURI(options.getString("fileUri"));
         if (!inFile.exists()) {
             Log.d(TAG, "input file does not exist");
             callback.error("input video does not exist.");
             return;
         }
 
-        String videoSrcPath = inFile.getAbsolutePath();
+        String videoSrcPath = inFile.getAbsolutePath();*/
+
+        final String videoSrcPath = options.getString("fileUri");
         Log.d(TAG, "videoSrcPath: " + videoSrcPath);
 
-        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        mmr.setDataSource(videoSrcPath);
-        float videoWidth = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
-        float videoHeight = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+        try
+        {
+            Uri uri = Uri.parse(videoSrcPath);
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            mmr.setDataSource(this.cordova.getActivity().getApplicationContext(), uri);
+            float videoWidth = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+            float videoHeight = Float.parseFloat(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
 
-        String orientation;
-        if (Build.VERSION.SDK_INT >= 17) {
-            String mmrOrientation = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
-            Log.d(TAG, "mmrOrientation: " + mmrOrientation); // 0, 90, 180, or 270
+            String orientation;
+            if (Build.VERSION.SDK_INT >= 17) {
+                String mmrOrientation = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
+                Log.d(TAG, "mmrOrientation: " + mmrOrientation); // 0, 90, 180, or 270
 
-            if (videoWidth < videoHeight) {
-                if (mmrOrientation.equals("0") || mmrOrientation.equals("180")) {
-                    orientation = "portrait";
+                if (videoWidth < videoHeight) {
+                    if (mmrOrientation.equals("0") || mmrOrientation.equals("180")) {
+                        orientation = "portrait";
+                    } else {
+                        orientation = "landscape";
+                    }
                 } else {
-                    orientation = "landscape";
+                    if (mmrOrientation.equals("0") || mmrOrientation.equals("180")) {
+                        orientation = "landscape";
+                    } else {
+                        orientation = "portrait";
+                    }
                 }
             } else {
-                if (mmrOrientation.equals("0") || mmrOrientation.equals("180")) {
-                    orientation = "landscape";
-                } else {
-                    orientation = "portrait";
-                }
+                orientation = (videoWidth < videoHeight) ? "portrait" : "landscape";
             }
-        } else {
-            orientation = (videoWidth < videoHeight) ? "portrait" : "landscape";
+
+            double duration = Double.parseDouble(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)) / 1000.0;
+            long bitrate = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+
+            JSONObject response = new JSONObject();
+            response.put("width", videoWidth);
+            response.put("height", videoHeight);
+            response.put("orientation", orientation);
+            response.put("duration", duration);
+            response.put("size", GetSize(uri));
+            response.put("bitrate", bitrate);
+
+            callback.success(response);
+        } catch (Throwable e) {
+            Log.d(TAG, "exception on video info", e);
+            callback.error(e.toString());
         }
-
-        double duration = Double.parseDouble(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)) / 1000.0;
-        long bitrate = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
-
-        JSONObject response = new JSONObject();
-        response.put("width", videoWidth);
-        response.put("height", videoHeight);
-        response.put("orientation", orientation);
-        response.put("duration", duration);
-        response.put("size", inFile.length());
-        response.put("bitrate", bitrate);
-
-        callback.success(response);
     }
 
+    private int GetSize(Uri uri)
+    {
+        try {
+            Cursor returnCursor = cordova.getActivity().getContentResolver().
+                    query(uri, null, null, null, null);
+            int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+            returnCursor.moveToFirst();
+
+            int size = returnCursor.getInt(sizeIndex) / 1000;
+
+            returnCursor.close();
+
+            return size;
+        } catch (Throwable e)
+        {
+            return 0;
+        }
+    }
 
     @SuppressWarnings("deprecation")
-    private File resolveLocalFileSystemURI(String url) throws IOException, JSONException {
+    /*private File resolveLocalFileSystemURI(String url) throws IOException, JSONException {
         String decoded = URLDecoder.decode(url, "UTF-8");
 
         File fp = null;
@@ -501,7 +594,7 @@ public class VideoEditor extends CordovaPlugin {
             throw new IOException("can't read file: " + url + " -> " + fp.getCanonicalPath());
         }
         return fp;
-    }
+    }*/
 
     /**
      * Get a file path from a Uri. This will get the the path for Storage Access
@@ -560,6 +653,9 @@ public class VideoEditor extends CordovaPlugin {
                 };
 
                 return getDataColumn(context, contentUri, selection, selectionArgs);
+            }
+            else if (isGoogleDriveUri(uri)) {
+                return getDriveFilePath(uri, context);
             }
         }
         // MediaStore (and general)
@@ -632,4 +728,50 @@ public class VideoEditor extends CordovaPlugin {
         return "com.android.providers.media.documents".equals(uri.getAuthority());
     }
 
+    public static boolean isGoogleDriveUri(Uri uri) {
+        return "com.google.android.apps.docs.storage".equals(uri.getAuthority());
+    }
+
+    private static String getDriveFilePath(Uri uri, Context context) {
+        Uri returnUri = uri;
+        Cursor returnCursor = context.getContentResolver().query(returnUri, null, null, null, null);
+        /*
+         * Get the column indexes of the data in the Cursor,
+         *     * move to the first row in the Cursor, get the data,
+         *     * and display it.
+         * */
+        int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+        int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+        returnCursor.moveToFirst();
+        String name = (returnCursor.getString(nameIndex));
+        String size = (Long.toString(returnCursor.getLong(sizeIndex)));
+        File file = new File(context.getCacheDir(), name);
+
+        try {
+            InputStream inputStream = context.getContentResolver().openInputStream(uri);
+            FileOutputStream outputStream = new FileOutputStream(file);
+            int read = 0;
+            int maxBufferSize = 1 * 1024 * 1024;
+            int bytesAvailable = inputStream.available();
+
+            //int bufferSize = 1024;
+            int bufferSize = Math.min(bytesAvailable, maxBufferSize);
+
+            final byte[] buffers = new byte[bufferSize];
+
+            while ((read = inputStream.read(buffers)) != -1) {
+                outputStream.write(buffers, 0, read);
+            }
+
+            Log.d("File Size", "Size " + file.length());
+            inputStream.close();
+            outputStream.close();
+            Log.d("File Path", "Path " + file.getPath());
+            Log.d("File Size", "Size " + file.length());
+        } catch (Exception e) {
+            Log.e("Exception", e.getMessage());
+        }
+
+        return file.getPath();
+    }
 }
