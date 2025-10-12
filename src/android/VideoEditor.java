@@ -203,7 +203,7 @@ public class VideoEditor extends CordovaPlugin {
                     MediaTranscoder.Listener listener = new MediaTranscoder.Listener() {
                         @Override
                         public void onTranscodeProgress(double progress) {
-                            Log.d(TAG, "transcode running " + progress);
+                            // Log.d(TAG, "transcode running " + progress);
 
                             JSONObject jsonObj = new JSONObject();
                             try {
@@ -270,10 +270,9 @@ public class VideoEditor extends CordovaPlugin {
                             new CustomAndroidFormatStrategy(videoBitrate, fps, width, height), listener);
 
                 } catch (Throwable e) {
-                    Log.d(TAG, "transcode exception ", e);
                     callback.error(e.toString());
+                    Log.d(TAG, "transcode exception ", e);
                 }
-
             }
         });
     }
