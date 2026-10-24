@@ -47,33 +47,31 @@ public class VideoEditor extends CordovaPlugin {
 
     private static final String TAG = "VideoEditor";
 
-    private CallbackContext callback;
-
+    // one CallbackContext per call: a thumbnail and a transcode of the same clip run at the same
+    // time, and a shared field handed the thumbnail's result to the transcode (2026-10-23)
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         Log.d(TAG, "execute method starting");
 
-        this.callback = callbackContext;
-
         if (action.equals("transcodeVideo")) {
             try {
-                this.transcodeVideo(args);
+                this.transcodeVideo(args, callbackContext);
             } catch (IOException e) {
-                callback.error(e.toString());
+                callbackContext.error(e.toString());
             }
             return true;
         } else if (action.equals("createThumbnail")) {
             try {
-                this.createThumbnail(args);
+                this.createThumbnail(args, callbackContext);
             } catch (IOException e) {
-                callback.error(e.toString());
+                callbackContext.error(e.toString());
             }
             return true;
         } else if (action.equals("getVideoInfo")) {
             try {
-                this.getVideoInfo(args);
+                this.getVideoInfo(args, callbackContext);
             } catch (IOException e) {
-                callback.error(e.toString());
+                callbackContext.error(e.toString());
             }
             return true;
         }
@@ -107,7 +105,7 @@ public class VideoEditor extends CordovaPlugin {
      * @param JSONArray args
      * @return void
      */
-    private void transcodeVideo(JSONArray args) throws JSONException, IOException {
+    private void transcodeVideo(JSONArray args, final CallbackContext callback) throws JSONException, IOException {
         Log.d(TAG, "transcodeVideo firing");
 
         JSONObject options = args.optJSONObject(0);
@@ -324,7 +322,7 @@ public class VideoEditor extends CordovaPlugin {
      * @param JSONArray args
      * @return void
      */
-    private void createThumbnail(JSONArray args) throws JSONException, IOException {
+    private void createThumbnail(JSONArray args, final CallbackContext callback) throws JSONException, IOException {
         Log.d(TAG, "createThumbnail firing");
 
 
@@ -473,7 +471,7 @@ public class VideoEditor extends CordovaPlugin {
      * @param JSONArray args
      * @return void
      */
-    private void getVideoInfo(JSONArray args) throws JSONException, IOException {
+    private void getVideoInfo(JSONArray args, final CallbackContext callback) throws JSONException, IOException {
         Log.d(TAG, "getVideoInfo firing");
 
         JSONObject options = args.optJSONObject(0);
